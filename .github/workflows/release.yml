@@ -14,6 +14,8 @@ jobs:
     # Step 1: Checkout the code
     - name: Checkout Code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch full history to avoid missing commits
 
     # Step 2: Set up Go with the correct version
     - name: Set Up Go
