@@ -3,7 +3,7 @@ name: Build and Release Cilium
 on:
   push:
     branches:
-      - main  # Trigger the workflow when pushing to main branch
+      - main  # Trigger workflow on push to main branch
 
 jobs:
   build-and-release:
@@ -11,23 +11,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the code
+    # Step 1: Checkout the code
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # Set up Go environment
+    # Step 2: Set up Go with the correct version
     - name: Set Up Go
       uses: actions/setup-go@v4
       with:
-        go-version: 1.19  # Specify the Go version required for Cilium
+        go-version: 1.23  # Match the version required by your go.mod file
 
-    # Install build dependencies
+    # Step 3: Install build dependencies
     - name: Install Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y clang llvm make gcc bpfcc-tools
 
-    # Build for AMD architecture
+    # Step 4: Validate go.mod format (optional)
+    - name: Validate go.mod Format
+      run: |
+        sed -i 's/go 1.23.0/go 1.23/' go.mod
+        cat go.mod  # Confirm the fix
+
+    # Step 5: Clean previous builds
+    - name: Clean Build Artifacts
+      run: |
+        make clean || true
+        for i in cilium-dbg daemon cilium-health bugtool operator plugins tools hubble-relay bpf clustermesh-apiserver; do
+          make -C $i clean || true
+        done
+
+    # Step 6: Build for AMD architecture
     - name: Build for AMD64
       run: |
         make clean
@@ -35,7 +49,7 @@ jobs:
         tar -czf cilium-linux-amd64.tar.gz cilium
         sha256sum cilium-linux-amd64.tar.gz > cilium-linux-amd64.tar.gz.sha256sum
 
-    # Build for ARM architecture
+    # Step 7: Build for ARM architecture
     - name: Build for ARM64
       run: |
         make clean
@@ -43,7 +57,7 @@ jobs:
         tar -czf cilium-linux-arm64.tar.gz cilium
         sha256sum cilium-linux-arm64.tar.gz > cilium-linux-arm64.tar.gz.sha256sum
 
-    # Upload all files as release artifacts
+    # Step 8: Upload all artifacts
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
@@ -54,7 +68,7 @@ jobs:
           cilium-linux-arm64.tar.gz
           cilium-linux-arm64.tar.gz.sha256sum
 
-    # Create a GitHub release
+    # Step 9: Create GitHub release
     - name: Create GitHub Release
       uses: ncipollo/release-action@v1
       with:
